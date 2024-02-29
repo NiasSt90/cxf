@@ -19,6 +19,7 @@
 
 package org.apache.cxf.staxutils.validation;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.InputStream;
 import java.io.Reader;
@@ -28,16 +29,20 @@ import java.util.Collection;
 import java.util.List;
 
 import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
+import javax.xml.stream.XMLStreamWriter;
 import javax.xml.transform.stream.StreamSource;
 
 import org.apache.cxf.endpoint.Endpoint;
 import org.apache.cxf.service.model.SchemaInfo;
 import org.apache.cxf.service.model.ServiceInfo;
+import org.apache.cxf.staxutils.StaxUtils;
 import org.apache.ws.commons.schema.XmlSchemaCollection;
 
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -67,9 +72,21 @@ public class Stax2ValidationUtilsTest {
     private static final String INVALID_MESSAGE_LOG = "<wrongLog xmlns=\"http://www.log.org\">"
             + "<message>Testing Log</message>" + "</wrongLog>";
 
+    private static final String VALID_MESSAGE_ABSTRACT =
+          "<AbstractElement xmlns=\"http://www.abstract.org\" xsi:type=\"ConcreteElement\" "
+          + "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">Valid1</AbstractElement>";
+
+    private static final String INVALID_MESSAGE_ABSTRACT =
+          "<AbstractElement xmlns=\"http://www.abstract.org\" xsi:type=\"ConcreteElement\" "
+          + "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">Valid3</AbstractElement>";
+
     private static final String ECHO_ERROR_MESSAGE = "tag name \"wrongEcho\" is not allowed.";
 
     private static final String LOG_ERROR_MESSAGE = "tag name \"wrongLog\" is not allowed.";
+
+    private static final String ABSTRACT_ERROR_MESSAGE = "the value is not a member of the enumeration";
+
+    private static final String ABSTRACT_SCHEMA = "schemas/abstractSchema.xsd";
 
     private static final String ECHO_SCHEMA = "schemas/echoSchema.xsd";
 
@@ -107,6 +124,8 @@ public class Stax2ValidationUtilsTest {
         parameters.add(new String[]{VALID_MESSAGE_LOG, INVALID_MESSAGE_LOG, LOG_ERROR_MESSAGE, MULTI_IMPORT_SCHEMA});
         parameters.add(new String[]{VALID_MESSAGE_ECHO, INVALID_MESSAGE_ECHO, ECHO_ERROR_MESSAGE, ECHO_SCHEMA});
         parameters.add(new String[]{VALID_MESSAGE_LOG, INVALID_MESSAGE_LOG, LOG_ERROR_MESSAGE, LOG_SCHEMA});
+        parameters.add(
+              new String[]{VALID_MESSAGE_ABSTRACT, INVALID_MESSAGE_ABSTRACT, ABSTRACT_ERROR_MESSAGE, ABSTRACT_SCHEMA});
         return parameters;
     }
 
@@ -126,7 +145,7 @@ public class Stax2ValidationUtilsTest {
     }
 
     @Test
-    public void testValidMessage() throws Exception {
+    public void testValidMessageOnReader() throws Exception {
         Throwable exception = null;
         xmlReader = createReader(validMessage);
         utils.setupValidation(xmlReader, endpoint, serviceInfo);
@@ -134,6 +153,23 @@ public class Stax2ValidationUtilsTest {
             while (xmlReader.hasNext()) {
                 xmlReader.next();
             }
+        } catch (Throwable e) {
+            exception = e;
+        }
+
+        assertThat(exception, is(nullValue()));
+    }
+
+
+    @Test
+    @Ignore("TODO/ShowCase: this test will fail for \"abstractSchema.xsd\" even with valid messages!")
+    public void testValidMessageOnWriter() throws Exception {
+        Throwable exception = null;
+        xmlReader = createReader(validMessage);
+        var xmlWriter = createDummyWriter();
+        utils.setupValidation(xmlWriter, endpoint, serviceInfo);
+        try {
+            StaxUtils.copy(xmlReader, xmlWriter);
         } catch (Throwable e) {
             exception = e;
         }
@@ -168,6 +204,12 @@ public class Stax2ValidationUtilsTest {
         Reader reader = new StringReader(message);
         XMLInputFactory factory = XMLInputFactory.newInstance();
         return factory.createXMLStreamReader(reader);
+    }
+
+
+    private XMLStreamWriter createDummyWriter() throws XMLStreamException {
+        XMLOutputFactory factory = XMLOutputFactory.newInstance();
+        return factory.createXMLStreamWriter(new ByteArrayOutputStream());
     }
 
 }

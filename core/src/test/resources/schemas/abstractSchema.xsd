@@ -1,0 +1,22 @@
+<xsd:schema attributeFormDefault="qualified"
+				elementFormDefault="qualified" targetNamespace="http://www.abstract.org"
+				xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+
+	<xsd:element name="AbstractElement" type="AbstractElement"/>
+
+	<xsd:complexType name="AbstractElement" abstract="true">
+		<xsd:simpleContent>
+			<xsd:extension base="xsd:string"/>
+		</xsd:simpleContent>
+	</xsd:complexType>
+
+	<xsd:complexType name="ConcreteElement" final="#all">
+		<xsd:simpleContent>
+			<xsd:restriction base="AbstractElement">
+				<xsd:enumeration value="Valid1"/>
+				<xsd:enumeration value="Valid2"/>
+			</xsd:restriction>
+		</xsd:simpleContent>
+	</xsd:complexType>
+
+</xsd:schema>
